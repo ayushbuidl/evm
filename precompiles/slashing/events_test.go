@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/holiman/uint256"
 
 	cmn "github.com/cosmos/evm/precompiles/common"
 	"github.com/cosmos/evm/precompiles/slashing"
@@ -81,7 +82,7 @@ func (s *PrecompileTestSuite) TestUnjailEvent() {
 			stateDB = s.network.GetStateDB()
 			ctx = s.network.GetContext()
 
-			contract := vm.NewContract(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, common.U2560, tc.gas)
+			contract := vm.NewContract(s.keyring.GetAddr(0), s.precompile.Address(), uint256.NewInt(0), tc.gas, nil)
 			ctx = ctx.WithGasMeter(storetypes.NewInfiniteGasMeter())
 			initialGas := ctx.GasMeter().GasConsumed()
 			s.Require().Zero(initialGas)

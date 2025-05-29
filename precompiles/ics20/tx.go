@@ -59,7 +59,7 @@ func (p *Precompile) Transfer(
 		)
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != sender {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), sender.String())
 	}

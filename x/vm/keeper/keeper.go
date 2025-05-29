@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
@@ -186,7 +187,9 @@ func (k *Keeper) SetHooks(eh types.EvmHooks) *Keeper {
 
 // PostTxProcessing delegates the call to the hooks.
 // If no hook has been registered, this function returns with a `nil` error
-func (k *Keeper) PostTxProcessing(ctx sdk.Context, sender common.Address, msg core.Message, receipt *ethtypes.Receipt) error {
+func (k *Keeper) PostTxProcessing(ctx sdk.Context, sender common.Address, msg core.Message,
+	receipt *ethtypes.Receipt,
+) error {
 	if k.hooks == nil {
 		return nil
 	}
@@ -231,7 +234,7 @@ func (k Keeper) GetAccountStorage(ctx sdk.Context, address common.Address) types
 // ----------------------------------------------------------------------------
 
 // Tracer return a default vm.Tracer based on current keeper state
-func (k Keeper) Tracer(ctx sdk.Context, msg core.Message, ethCfg *params.ChainConfig) vm.EVMLogger {
+func (k Keeper) Tracer(ctx sdk.Context, msg core.Message, ethCfg *params.ChainConfig) *tracing.Hooks {
 	return types.NewTracer(k.tracer, msg, ethCfg, ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //#nosec G115 -- int overflow is not a concern here
 }
 

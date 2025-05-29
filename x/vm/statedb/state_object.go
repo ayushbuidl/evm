@@ -38,6 +38,14 @@ func (acct Account) IsContract() bool {
 // Storage represents in-memory cache/buffer of contract storage.
 type Storage map[common.Hash]common.Hash
 
+func (s Storage) Copy() Storage {
+	cpy := make(Storage, len(s))
+	for key, value := range s {
+		cpy[key] = value
+	}
+	return cpy
+}
+
 // SortedKeys sort the keys for deterministic iteration
 func (s Storage) SortedKeys() []common.Hash {
 	keys := make([]common.Hash, 0, len(s))
@@ -48,14 +56,6 @@ func (s Storage) SortedKeys() []common.Hash {
 		return bytes.Compare(keys[i].Bytes(), keys[j].Bytes()) < 0
 	})
 	return keys
-}
-
-func (s Storage) Copy() Storage {
-	cpy := make(Storage, len(s))
-	for key, value := range s {
-		cpy[key] = value
-	}
-	return cpy
 }
 
 // stateObject is the state of an account
@@ -72,8 +72,9 @@ type stateObject struct {
 	address common.Address
 
 	// flags
-	dirtyCode bool
-	suicided  bool
+	dirtyCode      bool
+	selfDestructed bool
+	newContract    bool
 }
 
 // newObject creates a state object.
@@ -102,35 +103,39 @@ func (s *stateObject) empty() bool {
 		types.IsEmptyCodeHash(s.account.CodeHash)
 }
 
-func (s *stateObject) markSuicided() {
-	s.suicided = true
+func (s *stateObject) markSelfDestructed() {
+	s.selfDestructed = true
 }
 
 // AddBalance adds amount to s's balance.
 // It is used to add funds to the destination account of a transfer.
-func (s *stateObject) AddBalance(amount *uint256.Int) {
-	if amount.Sign() == 0 {
-		return
+func (s *stateObject) AddBalance(amount *uint256.Int) uint256.Int {
+	if amount.IsZero() {
+		return *(s.Balance())
 	}
-	s.SetBalance(new(uint256.Int).Add(s.Balance(), amount))
+	return s.SetBalance(new(uint256.Int).Add(s.Balance(), amount))
 }
 
 // SubBalance removes amount from s's balance.
 // It is used to remove funds from the origin account of a transfer.
-func (s *stateObject) SubBalance(amount *uint256.Int) {
-	if amount.Sign() == 0 {
-		return
+// Returns the previous balance
+func (s *stateObject) SubBalance(amount *uint256.Int) uint256.Int {
+	if amount.IsZero() {
+		return *(s.Balance())
 	}
-	s.SetBalance(new(uint256.Int).Sub(s.Balance(), amount))
+	return s.SetBalance(new(uint256.Int).Sub(s.Balance(), amount))
 }
 
-// SetBalance update account balance.
-func (s *stateObject) SetBalance(amount *uint256.Int) {
+// SetBalance updates account balance.
+// Returns the previous value.
+func (s *stateObject) SetBalance(amount *uint256.Int) uint256.Int {
+	prev := *s.account.Balance
 	s.db.journal.append(balanceChange{
 		account: &s.address,
 		prev:    new(uint256.Int).Set(s.account.Balance),
 	})
 	s.setBalance(amount)
+	return prev
 }
 
 // AddPrecompileFn appends to the journal an entry
@@ -243,11 +248,12 @@ func (s *stateObject) GetState(key common.Hash) common.Hash {
 }
 
 // SetState sets the contract state
-func (s *stateObject) SetState(key common.Hash, value common.Hash) {
+// It returns the previous value
+func (s *stateObject) SetState(key common.Hash, value common.Hash) common.Hash {
 	// If the new value is the same as old, don't set
 	prev := s.GetState(key)
 	if prev == value {
-		return
+		return prev
 	}
 	// New value is different, update and journal the change
 	s.db.journal.append(storageChange{
@@ -256,6 +262,7 @@ func (s *stateObject) SetState(key common.Hash, value common.Hash) {
 		prevalue: prev,
 	})
 	s.setState(key, value)
+	return prev
 }
 
 func (s *stateObject) setState(key, value common.Hash) {

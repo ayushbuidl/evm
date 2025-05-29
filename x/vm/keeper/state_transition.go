@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -35,7 +36,7 @@ func (k *Keeper) NewEVM(
 	ctx sdk.Context,
 	msg core.Message,
 	cfg *statedb.EVMConfig,
-	tracer vm.EVMLogger,
+	tracer *tracing.Hooks,
 	stateDB vm.StateDB,
 ) *vm.EVM {
 	blockCtx := vm.BlockContext{
@@ -184,7 +185,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	// Compute block bloom filter
 	if len(logs) > 0 {
 		bloom = k.GetBlockBloomTransient(ctx)
-		bloom.Or(bloom, big.NewInt(0).SetBytes(ethtypes.LogsBloom(logs)))
+		bloom.Or(bloom, big.NewInt(0).SetBytes(ethtypes.CreateBloom(&ethtypes.Receipt{Logs: logs}).Bytes()))
 		bloomReceipt = ethtypes.BytesToBloom(bloom.Bytes())
 	}
 
@@ -269,7 +270,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 }
 
 // ApplyMessage calls ApplyMessageWithConfig with an empty TxConfig.
-func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger,
+func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer *tracing.Hooks,
 	commit bool,
 ) (*types.MsgEthereumTxResponse, error) {
 	cfg, err := k.EVMConfig(ctx, sdk.ConsAddress(ctx.BlockHeader().ProposerAddress))
@@ -322,7 +323,7 @@ func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLo
 func (k *Keeper) ApplyMessageWithConfig(
 	ctx sdk.Context,
 	msg core.Message,
-	tracer vm.EVMLogger,
+	tracer *tracing.Hooks,
 	commit bool,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
@@ -340,9 +341,13 @@ func (k *Keeper) ApplyMessageWithConfig(
 	// Allow the tracer captures the tx level events, mainly the gas consumption.
 	vmCfg := evm.Config
 	if vmCfg.Tracer != nil {
-		vmCfg.Tracer.CaptureTxStart(leftoverGas)
+		vmCfg.Tracer.OnTxStart(
+			evm.GetVMContext(),
+			ethtypes.NewTx(&ethtypes.LegacyTx{To: msg.To, Data: msg.Data, Value: msg.Value, Gas: msg.GasLimit}),
+			msg.From,
+		)
 		defer func() {
-			vmCfg.Tracer.CaptureTxEnd(leftoverGas)
+			vmCfg.Tracer.OnTxEnd(&ethtypes.Receipt{GasUsed: msg.GasLimit - leftoverGas}, vmErr)
 		}()
 	}
 
@@ -368,7 +373,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
 	rules := ethCfg.Rules(big.NewInt(ctx.BlockHeight()), true, uint64(ctx.BlockTime().Unix())) //#nosec G115 -- int overflow is not a concern here
-	stateDB.Prepare(rules, msg.From, common.Address{}, msg.To, evm.ActivePrecompiles(rules), msg.AccessList)
+	stateDB.Prepare(rules, msg.From, common.Address{}, msg.To, evm.ActivePrecompiles(), msg.AccessList)
 
 	convertedValue, err := utils.Uint256FromBigInt(msg.Value)
 	if err != nil {
@@ -379,11 +384,11 @@ func (k *Keeper) ApplyMessageWithConfig(
 		// take over the nonce management from evm:
 		// - reset sender's nonce to msg.Nonce() before calling evm.
 		// - increase sender's nonce by one no matter the result.
-		stateDB.SetNonce(sender.Address(), msg.Nonce)
-		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, convertedValue)
-		stateDB.SetNonce(sender.Address(), msg.Nonce+1)
+		stateDB.SetNonce(sender.Address(), msg.Nonce, tracing.NonceChangeEoACall)
+		ret, _, leftoverGas, vmErr = evm.Create(sender.Address(), msg.Data, leftoverGas, convertedValue)
+		stateDB.SetNonce(sender.Address(), msg.Nonce+1, tracing.NonceChangeContractCreator)
 	} else {
-		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, convertedValue)
+		ret, leftoverGas, vmErr = evm.Call(sender.Address(), *msg.To, msg.Data, leftoverGas, convertedValue)
 	}
 
 	refundQuotient := params.RefundQuotient

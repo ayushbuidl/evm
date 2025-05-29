@@ -81,7 +81,14 @@ func VerifyFee(
 		accessList = txData.GetAccessList()
 	}
 
-	intrinsicGas, err := core.IntrinsicGas(txData.GetData(), accessList, isContractCreation, homestead, istanbul, shanghai)
+	var authList []ethtypes.SetCodeAuthorization
+	ethTx := ethtypes.NewTx(txData.AsEthereumData())
+	if ethTx != nil {
+		authList = ethTx.SetCodeAuthorizations()
+	}
+
+	intrinsicGas, err := core.IntrinsicGas(txData.GetData(), accessList, authList, isContractCreation, homestead,
+		istanbul, shanghai)
 	if err != nil {
 		return nil, errorsmod.Wrapf(
 			err,

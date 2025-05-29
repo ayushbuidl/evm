@@ -56,7 +56,7 @@ func (p *Precompile) ClaimRewards(
 		return nil, fmt.Errorf("maxRetrieve (%d) parameter exceeds the maximum number of validators (%d)", maxRetrieve, maxVals)
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != delegatorAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), delegatorAddr.String())
 	}
@@ -116,7 +116,7 @@ func (p Precompile) SetWithdrawAddress(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != delegatorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), delegatorHexAddr.String())
 	}
@@ -146,7 +146,7 @@ func (p *Precompile) WithdrawDelegatorReward(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != delegatorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), delegatorHexAddr.String())
 	}
@@ -192,7 +192,7 @@ func (p *Precompile) WithdrawValidatorCommission(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != validatorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), validatorHexAddr.String())
 	}
@@ -238,7 +238,7 @@ func (p *Precompile) FundCommunityPool(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != depositorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), depositorHexAddr.String())
 	}
@@ -279,7 +279,7 @@ func (p *Precompile) DepositValidatorRewardsPool(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != depositorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), depositorHexAddr.String())
 	}

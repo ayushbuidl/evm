@@ -61,7 +61,7 @@ func (p Precompile) CreateValidator(
 		"value", msg.Value.Amount.String(),
 	)
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	// we won't allow calls from smart contracts
 	if hasCode := stateDB.GetCode(msgSender) != nil; hasCode {
 		return nil, errors.New(ErrCannotCallFromContract)
@@ -108,7 +108,7 @@ func (p Precompile) EditValidator(
 		"min_self_delegation", msg.MinSelfDelegation,
 	)
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	// we won't allow calls from smart contracts
 	if hasCode := stateDB.GetCode(msgSender) != nil; hasCode {
 		return nil, errors.New(ErrCannotCallFromContract)
@@ -159,7 +159,7 @@ func (p *Precompile) Delegate(
 		),
 	)
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != delegatorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), delegatorHexAddr.String())
 	}
@@ -220,7 +220,7 @@ func (p Precompile) Undelegate(
 		),
 	)
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != delegatorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), delegatorHexAddr.String())
 	}
@@ -271,7 +271,7 @@ func (p Precompile) Redelegate(
 		),
 	)
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != delegatorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), delegatorHexAddr.String())
 	}
@@ -320,7 +320,7 @@ func (p Precompile) CancelUnbondingDelegation(
 		),
 	)
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != delegatorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), delegatorHexAddr.String())
 	}

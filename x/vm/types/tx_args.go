@@ -3,13 +3,14 @@ package types
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	sdkmath "cosmossdk.io/math"
 )
@@ -38,11 +39,17 @@ type TransactionArgs struct {
 	AccessList *ethtypes.AccessList `json:"accessList,omitempty"`
 	ChainID    *hexutil.Big         `json:"chainId,omitempty"`
 
-	// Introduced by BlobTx type
-	BlobGasFeeCap *big.Int
-	BlobHashes    []common.Hash
+	// For BlobTxType
+	BlobFeeCap *hexutil.Big  `json:"maxFeePerBlobGas"`
+	BlobHashes []common.Hash `json:"blobVersionedHashes,omitempty"`
 
-	SkipAccountChecks bool
+	// For BlobTxType transactions with blob sidecar
+	Blobs       []kzg4844.Blob       `json:"blobs"`
+	Commitments []kzg4844.Commitment `json:"commitments"`
+	Proofs      []kzg4844.Proof      `json:"proofs"`
+
+	// For SetCodeTxType
+	AuthorizationList []ethtypes.SetCodeAuthorization `json:"authorizationList"`
 }
 
 // String return the struct in a string format
@@ -161,7 +168,9 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 
 // ToMessage converts the arguments to the Message type used by the core evm.
 // This assumes that setTxDefaults has been called.
-func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (core.Message, error) {
+func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int, skipNonceCheck,
+	skipEoACheck bool,
+) (core.Message, error) {
 	// Reject invalid combinations of pre- and post-1559 fee styles
 	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
 		return core.Message{}, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
@@ -212,7 +221,10 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 			// Backfill the legacy gasPrice for EVM execution, unless we're all zeroes
 			gasPrice = new(big.Int)
 			if gasFeeCap.BitLen() > 0 || gasTipCap.BitLen() > 0 {
-				gasPrice = math.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
+				gasPrice = new(big.Int).Add(gasTipCap, baseFee)
+				if gasPrice.Cmp(gasFeeCap) > 0 {
+					gasPrice = gasFeeCap
+				}
 			}
 		}
 	}
@@ -232,19 +244,21 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 	}
 
 	msg := core.Message{
-		From:              addr,
-		To:                args.To,
-		Nonce:             nonce,
-		Value:             value,
-		GasLimit:          gas,
-		GasPrice:          gasPrice,
-		GasFeeCap:         gasFeeCap,
-		GasTipCap:         gasTipCap,
-		Data:              data,
-		AccessList:        accessList,
-		BlobGasFeeCap:     args.BlobGasFeeCap,
-		BlobHashes:        args.BlobHashes,
-		SkipAccountChecks: args.SkipAccountChecks,
+		From:                  addr,
+		To:                    args.To,
+		Nonce:                 nonce,
+		Value:                 value,
+		GasLimit:              gas,
+		GasPrice:              gasPrice,
+		GasFeeCap:             gasFeeCap,
+		GasTipCap:             gasTipCap,
+		Data:                  data,
+		AccessList:            accessList,
+		BlobGasFeeCap:         (*big.Int)(args.BlobFeeCap),
+		BlobHashes:            args.BlobHashes,
+		SetCodeAuthorizations: args.AuthorizationList,
+		SkipNonceChecks:       skipNonceCheck,
+		SkipFromEOACheck:      skipEoACheck,
 	}
 	return msg, nil
 }

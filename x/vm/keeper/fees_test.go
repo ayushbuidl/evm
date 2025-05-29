@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
@@ -210,7 +211,7 @@ func (suite *KeeperTestSuite) TestCheckSenderBalance() {
 	}
 
 	vmdb := suite.StateDB()
-	vmdb.AddBalance(addr, uint256.MustFromBig(hundredInt.BigInt()))
+	vmdb.AddBalance(addr, uint256.MustFromBig(hundredInt.BigInt()), tracing.BalanceChangeUnspecified)
 	balance := vmdb.GetBalance(addr)
 	suite.Require().Equal(balance.ToBig(), hundredInt.BigInt())
 	err := vmdb.Commit()
@@ -471,7 +472,7 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 				} else {
 					gasTipCap = tc.gasTipCap
 				}
-				vmdb.AddBalance(addr, uint256.MustFromBig(initBalance.BigInt()))
+				vmdb.AddBalance(addr, uint256.MustFromBig(initBalance.BigInt()), tracing.BalanceChangeUnspecified)
 				balance := vmdb.GetBalance(addr)
 				suite.Require().Equal(balance.ToBig(), initBalance.BigInt())
 			} else {
@@ -479,7 +480,7 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 					gasPrice = tc.gasPrice.BigInt()
 				}
 
-				vmdb.AddBalance(addr, uint256.MustFromBig(hundredInt.BigInt()))
+				vmdb.AddBalance(addr, uint256.MustFromBig(hundredInt.BigInt()), tracing.BalanceChangeUnspecified)
 				balance := vmdb.GetBalance(addr)
 				suite.Require().Equal(balance.ToBig(), hundredInt.BigInt())
 			}

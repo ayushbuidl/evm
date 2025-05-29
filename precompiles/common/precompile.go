@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/holiman/uint256"
 
@@ -175,7 +176,7 @@ func HandleGasError(ctx sdk.Context, contract *vm.Contract, initialGas storetype
 
 				// update contract gas
 				usedGas := ctx.GasMeter().GasConsumed() - initialGas
-				_ = contract.UseGas(usedGas)
+				_ = contract.UseGas(usedGas, nil, tracing.GasChangeCallFailedExecution)
 
 				*err = vm.ErrOutOfGas
 				// FIXME: add InfiniteGasMeter with previous Gas limit.
@@ -196,10 +197,10 @@ func (p Precompile) AddJournalEntries(stateDB *statedb.StateDB, s Snapshot) erro
 		switch entry.Op {
 		case Sub:
 			// add the corresponding balance change to the journal
-			stateDB.SubBalance(entry.Account, entry.Amount)
+			stateDB.SubBalance(entry.Account, entry.Amount, tracing.BalanceChangeUnspecified)
 		case Add:
 			// add the corresponding balance change to the journal
-			stateDB.AddBalance(entry.Account, entry.Amount)
+			stateDB.AddBalance(entry.Account, entry.Amount, tracing.BalanceChangeUnspecified)
 		}
 	}
 

@@ -240,7 +240,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	nonce := k.GetNonce(ctx, args.GetFrom())
 	args.Nonce = (*hexutil.Uint64)(&nonce)
 
-	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
+	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee, false, false)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -321,7 +321,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
 	// convert the tx args to an ethereum message
-	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
+	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee, true, true)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -361,19 +361,20 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	executable := func(gas uint64) (vmError bool, rsp *types.MsgEthereumTxResponse, err error) {
 		// update the message with the new gas value
 		msg = core.Message{
-			From:              msg.From,
-			To:                msg.To,
-			Nonce:             msg.Nonce,
-			Value:             msg.Value,
-			GasLimit:          gas,
-			GasPrice:          msg.GasPrice,
-			GasFeeCap:         msg.GasFeeCap,
-			GasTipCap:         msg.GasTipCap,
-			Data:              msg.Data,
-			AccessList:        msg.AccessList,
-			BlobGasFeeCap:     msg.BlobGasFeeCap,
-			BlobHashes:        msg.BlobHashes,
-			SkipAccountChecks: msg.SkipAccountChecks,
+			From:             msg.From,
+			To:               msg.To,
+			Nonce:            msg.Nonce,
+			Value:            msg.Value,
+			GasLimit:         gas,
+			GasPrice:         msg.GasPrice,
+			GasFeeCap:        msg.GasFeeCap,
+			GasTipCap:        msg.GasTipCap,
+			Data:             msg.Data,
+			AccessList:       msg.AccessList,
+			BlobGasFeeCap:    msg.BlobGasFeeCap,
+			BlobHashes:       msg.BlobHashes,
+			SkipNonceChecks:  msg.SkipNonceChecks,
+			SkipFromEOACheck: msg.SkipFromEOACheck,
 		}
 
 		tmpCtx := ctx
@@ -617,7 +618,7 @@ func (k *Keeper) traceTx(
 ) (*interface{}, uint, error) {
 	// Assemble the structured logger or the JavaScript tracer
 	var (
-		tracer    tracers.Tracer
+		tracer    *tracers.Tracer
 		overrides *ethparams.ChainConfig
 		err       error
 		timeout   = defaultTraceTimeout
@@ -640,12 +641,16 @@ func (k *Keeper) traceTx(
 		DisableStorage:   traceConfig.DisableStorage,
 		DisableStack:     traceConfig.DisableStack,
 		EnableReturnData: traceConfig.EnableReturnData,
-		Debug:            traceConfig.Debug,
 		Limit:            int(traceConfig.Limit),
 		Overrides:        overrides,
 	}
 
-	tracer = logger.NewStructLogger(&logConfig)
+	sLogger := logger.NewStructLogger(&logConfig)
+	tracer = &tracers.Tracer{
+		Hooks:     sLogger.Hooks(),
+		GetResult: sLogger.GetResult,
+		Stop:      sLogger.Stop,
+	}
 
 	tCtx := &tracers.Context{
 		BlockHash: txConfig.BlockHash,
@@ -654,7 +659,8 @@ func (k *Keeper) traceTx(
 	}
 
 	if traceConfig.Tracer != "" {
-		if tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig); err != nil {
+		if tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig,
+			types.GetEthChainConfig()); err != nil {
 			return nil, 0, status.Error(codes.Internal, err.Error())
 		}
 	}
@@ -680,7 +686,7 @@ func (k *Keeper) traceTx(
 	// Build EVM execution context
 	ctx = evmante.BuildEvmExecutionCtx(ctx).
 		WithGasMeter(cosmosevmtypes.NewInfiniteGasMeterWithLimit(msg.GasLimit))
-	res, err := k.ApplyMessageWithConfig(ctx, *msg, tracer, commitMessage, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(ctx, *msg, tracer.Hooks, commitMessage, cfg, txConfig)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())
 	}

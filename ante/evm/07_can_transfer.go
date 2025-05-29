@@ -42,7 +42,7 @@ func CanTransfer(
 	}
 
 	stateDB := statedb.New(ctx, evmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash())))
-	evm := evmKeeper.NewEVM(ctx, msg, cfg, nil, stateDB)
+	evm := evmKeeper.NewEVM(ctx, msg, cfg, evmtypes.NewNoOpTracer(), stateDB)
 
 	// check that caller has enough balance to cover asset transfer for **topmost** call
 	// NOTE: here the gas consumed is from the context with the infinite gas meter

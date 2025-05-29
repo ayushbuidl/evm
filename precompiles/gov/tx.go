@@ -43,7 +43,7 @@ func (p *Precompile) SubmitProposal(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != proposerHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), proposerHexAddr.String())
 	}
@@ -82,7 +82,7 @@ func (p *Precompile) Deposit(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != depositorHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), depositorHexAddr.String())
 	}
@@ -123,7 +123,7 @@ func (p *Precompile) CancelProposal(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != proposerHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), proposerHexAddr.String())
 	}
@@ -185,7 +185,7 @@ func (p Precompile) Vote(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != voterHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), voterHexAddr.String())
 	}
@@ -215,7 +215,7 @@ func (p Precompile) VoteWeighted(
 		return nil, err
 	}
 
-	msgSender := contract.CallerAddress
+	msgSender := contract.Caller()
 	if msgSender != voterHexAddr {
 		return nil, fmt.Errorf(cmn.ErrRequesterIsNotMsgSender, msgSender.String(), voterHexAddr.String())
 	}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -73,7 +74,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 			// create a contract account
 			db.CreateAccount(address)
 			db.SetCode(address, []byte("hello world"))
-			db.AddBalance(address, uint256.NewInt(100))
+			db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 			db.SetState(address, key1, value1)
 			db.SetState(address, key2, value2)
 			suite.Require().NoError(db.Commit())
@@ -119,8 +120,8 @@ func (suite *StateDBTestSuite) TestAccountOverride() {
 	amount := uint256.NewInt(1)
 
 	// init an EOA account, account overridden only happens on EOA account.
-	db.AddBalance(address, amount)
-	db.SetNonce(address, 1)
+	db.AddBalance(address, amount, tracing.BalanceChangeUnspecified)
+	db.SetNonce(address, 1, tracing.NonceChangeUnspecified)
 
 	// override
 	db.CreateAccount(address)
@@ -137,10 +138,10 @@ func (suite *StateDBTestSuite) TestDBError() {
 		malleate func(vm.StateDB)
 	}{
 		{"set account", func(db vm.StateDB) {
-			db.SetNonce(errAddress, 1)
+			db.SetNonce(errAddress, 1, tracing.NonceChangeUnspecified)
 		}},
 		{"delete account", func(db vm.StateDB) {
-			db.SetNonce(errAddress, 1)
+			db.SetNonce(errAddress, 1, tracing.NonceChangeUnspecified)
 			db.SelfDestruct(errAddress)
 			suite.Require().True(db.HasSelfDestructed(errAddress))
 		}},
@@ -160,19 +161,19 @@ func (suite *StateDBTestSuite) TestBalance() {
 		expBalance *uint256.Int
 	}{
 		{"add balance", func(db *statedb.StateDB) {
-			db.AddBalance(address, uint256.NewInt(10))
+			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
 		}, uint256.NewInt(10)},
 		{"sub balance", func(db *statedb.StateDB) {
-			db.AddBalance(address, uint256.NewInt(10))
+			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
 			// get dirty balance
 			suite.Require().Equal(uint256.NewInt(10), db.GetBalance(address))
-			db.SubBalance(address, uint256.NewInt(2))
+			db.SubBalance(address, uint256.NewInt(2), tracing.BalanceChangeUnspecified)
 		}, uint256.NewInt(8)},
 		{"add zero balance", func(db *statedb.StateDB) {
-			db.AddBalance(address, uint256.NewInt(0))
+			db.AddBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 		}, uint256.NewInt(0)},
 		{"sub zero balance", func(db *statedb.StateDB) {
-			db.SubBalance(address, uint256.NewInt(0))
+			db.SubBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 		}, uint256.NewInt(0)},
 	}
 
@@ -305,11 +306,11 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			db.SetState(address, v1, v3)
 		}},
 		{"set nonce", func(db vm.StateDB) {
-			db.SetNonce(address, 10)
+			db.SetNonce(address, 10, tracing.NonceChangeUnspecified)
 		}},
 		{"change balance", func(db vm.StateDB) {
-			db.AddBalance(address, uint256.NewInt(10))
-			db.SubBalance(address, uint256.NewInt(5))
+			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+			db.SubBalance(address, uint256.NewInt(5), tracing.BalanceChangeUnspecified)
 		}},
 		{"override account", func(db vm.StateDB) {
 			db.CreateAccount(address)
@@ -345,11 +346,11 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			{
 				// do some arbitrary changes to the storage
 				db := statedb.New(ctx, keeper, emptyTxConfig)
-				db.SetNonce(address, 1)
-				db.AddBalance(address, uint256.NewInt(100))
+				db.SetNonce(address, 1, tracing.NonceChangeUnspecified)
+				db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 				db.SetCode(address, []byte("hello world"))
 				db.SetState(address, v1, v2)
-				db.SetNonce(address2, 1)
+				db.SetNonce(address2, 1, tracing.NonceChangeUnspecified)
 				suite.Require().NoError(db.Commit())
 			}
 
@@ -464,6 +465,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 				IsMerge:          true,
 				IsShanghai:       true,
 				IsCancun:         true,
+				IsEIP2929:        true,
 			}
 			db.Prepare(rules, address, common.Address{}, &address2, vm.PrecompiledAddressesBerlin, al)
 

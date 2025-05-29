@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
@@ -72,7 +73,7 @@ func TestInitGenesis(t *testing.T) {
 		{
 			name: "valid account",
 			malleate: func(_ *testnetwork.UnitTestNetwork) {
-				vmdb.AddBalance(address, uint256.NewInt(1))
+				vmdb.AddBalance(address, uint256.NewInt(1), tracing.BalanceChangeUnspecified)
 			},
 			genState: &types.GenesisState{
 				Params: types.DefaultParams(),

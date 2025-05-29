@@ -156,9 +156,6 @@ message ChainConfig {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.moretags) = "yaml:\"berlin_block\""
   ];
-  // DEPRECATED: EWASM, YOLOV3 and Catalyst block have been deprecated
-  reserved 14, 15, 16;
-  reserved "yolo_v3_block", "ewasm_block", "catalyst_block";
   // london_block: London switch block (nil = no fork, 0 = already on london)
   string london_block = 17 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
@@ -170,10 +167,6 @@ message ChainConfig {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.moretags) = "yaml:\"arrow_glacier_block\""
   ];
-  // DEPRECATED: merge fork block was deprecated:
-  // https://github.com/ethereum/go-ethereum/pull/24904
-  reserved 19;
-  reserved "merge_fork_block";
   // gray_glacier_block: EIP-5133 (bomb delay) switch block (nil = no fork, 0 =
   // already activated)
   string gray_glacier_block = 20 [
@@ -195,6 +188,7 @@ message ChainConfig {
   string denom = 25;
   // decimals is the real decimal precision of the denomination used on the EVM
   uint64 decimals = 26;
+
   // shanghai_time: Shanghai switch time (nil = no fork, 0 = already on
   // shanghai)
   string shanghai_time = 27 [
@@ -215,6 +209,11 @@ message ChainConfig {
   string verkle_time = 30 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.moretags) = "yaml:\"verkle_time\""
+  ];
+  // osaka_time: Osaka switch time (nil = no fork, 0 = already on osaka)
+  string osaka_time = 31 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"osaka_time\""
   ];
 }
 

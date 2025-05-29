@@ -25,31 +25,36 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *gethparams.ChainConfig {
 		cID = chainID
 	}
 	return &gethparams.ChainConfig{
-		ChainID:                       cID,
-		HomesteadBlock:                getBlockValue(cc.HomesteadBlock),
-		DAOForkBlock:                  getBlockValue(cc.DAOForkBlock),
-		DAOForkSupport:                cc.DAOForkSupport,
-		EIP150Block:                   getBlockValue(cc.EIP150Block),
-		EIP155Block:                   getBlockValue(cc.EIP155Block),
-		EIP158Block:                   getBlockValue(cc.EIP158Block),
-		ByzantiumBlock:                getBlockValue(cc.ByzantiumBlock),
-		ConstantinopleBlock:           getBlockValue(cc.ConstantinopleBlock),
-		PetersburgBlock:               getBlockValue(cc.PetersburgBlock),
-		IstanbulBlock:                 getBlockValue(cc.IstanbulBlock),
-		MuirGlacierBlock:              getBlockValue(cc.MuirGlacierBlock),
-		BerlinBlock:                   getBlockValue(cc.BerlinBlock),
-		LondonBlock:                   getBlockValue(cc.LondonBlock),
-		ArrowGlacierBlock:             getBlockValue(cc.ArrowGlacierBlock),
-		GrayGlacierBlock:              getBlockValue(cc.GrayGlacierBlock),
-		MergeNetsplitBlock:            getBlockValue(cc.MergeNetsplitBlock),
-		ShanghaiTime:                  getTimestampValue(cc.ShanghaiTime),
-		CancunTime:                    getTimestampValue(cc.CancunTime),
-		PragueTime:                    getTimestampValue(cc.PragueTime),
-		VerkleTime:                    getTimestampValue(cc.VerkleTime),
-		TerminalTotalDifficulty:       nil,
-		TerminalTotalDifficultyPassed: true,
-		Ethash:                        nil,
-		Clique:                        nil,
+		ChainID:                 cID,
+		HomesteadBlock:          getBlockValue(cc.HomesteadBlock),
+		DAOForkBlock:            getBlockValue(cc.DAOForkBlock),
+		DAOForkSupport:          cc.DAOForkSupport,
+		EIP150Block:             getBlockValue(cc.EIP150Block),
+		EIP155Block:             getBlockValue(cc.EIP155Block),
+		EIP158Block:             getBlockValue(cc.EIP158Block),
+		ByzantiumBlock:          getBlockValue(cc.ByzantiumBlock),
+		ConstantinopleBlock:     getBlockValue(cc.ConstantinopleBlock),
+		PetersburgBlock:         getBlockValue(cc.PetersburgBlock),
+		IstanbulBlock:           getBlockValue(cc.IstanbulBlock),
+		MuirGlacierBlock:        getBlockValue(cc.MuirGlacierBlock),
+		BerlinBlock:             getBlockValue(cc.BerlinBlock),
+		LondonBlock:             getBlockValue(cc.LondonBlock),
+		ArrowGlacierBlock:       getBlockValue(cc.ArrowGlacierBlock),
+		GrayGlacierBlock:        getBlockValue(cc.GrayGlacierBlock),
+		MergeNetsplitBlock:      getBlockValue(cc.MergeNetsplitBlock),
+		ShanghaiTime:            getTimestampValue(cc.ShanghaiTime),
+		CancunTime:              getTimestampValue(cc.CancunTime),
+		PragueTime:              getTimestampValue(cc.PragueTime),
+		OsakaTime:               getTimestampValue(cc.OsakaTime),
+		VerkleTime:              getTimestampValue(cc.VerkleTime),
+		TerminalTotalDifficulty: nil,
+		Ethash:                  nil,
+		Clique:                  nil,
+		BlobScheduleConfig: &gethparams.BlobScheduleConfig{
+			Cancun: gethparams.DefaultCancunBlobConfig,
+			Prague: gethparams.DefaultPragueBlobConfig,
+			Osaka:  gethparams.DefaultOsakaBlobConfig,
+		},
 	}
 }
 
@@ -75,6 +80,7 @@ func DefaultChainConfig(evmChainID uint64) *ChainConfig {
 	mergeNetsplitBlock := sdkmath.ZeroInt()
 	shanghaiTime := sdkmath.ZeroInt()
 	cancunTime := sdkmath.ZeroInt()
+	pragueTime := sdkmath.ZeroInt()
 
 	cfg := &ChainConfig{
 		ChainId:             evmChainID,
@@ -98,7 +104,8 @@ func DefaultChainConfig(evmChainID uint64) *ChainConfig {
 		MergeNetsplitBlock:  &mergeNetsplitBlock,
 		ShanghaiTime:        &shanghaiTime,
 		CancunTime:          &cancunTime,
-		PragueTime:          nil,
+		PragueTime:          &pragueTime,
+		OsakaTime:           nil,
 		VerkleTime:          nil,
 	}
 	return cfg
@@ -195,6 +202,9 @@ func (cc ChainConfig) Validate() error {
 	}
 	if err := validateBlockOrTimestamp(cc.PragueTime); err != nil {
 		return errorsmod.Wrap(err, "PragueTime")
+	}
+	if err := validateBlockOrTimestamp(cc.OsakaTime); err != nil {
+		return errorsmod.Wrap(err, "OsakaTime")
 	}
 	if err := validateBlockOrTimestamp(cc.VerkleTime); err != nil {
 		return errorsmod.Wrap(err, "VerkleTime")

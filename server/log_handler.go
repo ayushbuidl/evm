@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	log "cosmossdk.io/log"
+	"cosmossdk.io/log"
 )
 
 // CustomSlogHandler bridges Geth's slog logs to the existing Cosmos SDK logger.
